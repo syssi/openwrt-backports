@@ -1,0 +1,13 @@
+#!/bin/sh /etc/rc.common
+
+START=90
+DAEMON=/usr/bin/scanbuttond
+
+start() {
+        service_start $DAEMON --quiet
+}
+
+stop() {
+        service_stop $DAEMON --quiet
+}
+
