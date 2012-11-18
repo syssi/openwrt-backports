@@ -29,8 +29,10 @@ define Package/vcontrold
   URL:=http://vcontrold.wikispaces.com/vcontrold
 endef
 
-#define Package/vcontrold/description
-#endef
+define Package/vcontrold/description
+A program reading data coming from the control unit of a vito heating
+system using an optolink adapter connected to a serial port. 
+endef
 
 define Build/Configure
 	(cd $(PKG_BUILD_DIR)/vcontrold && aclocal && autoconf && touch NEWS README AUTHORS ChangeLog && automake --add-missing)
