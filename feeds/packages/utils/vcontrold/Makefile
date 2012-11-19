@@ -30,8 +30,8 @@ define Package/vcontrold
 endef
 
 define Package/vcontrold/description
-A program reading data coming from the control unit of a vito heating
-system using an optolink adapter connected to a serial port. 
+A daemon reading data coming from the control unit of a vito heating
+system using an optolink adapter connected to a serial port.
 endef
 
 define Build/Configure
