@@ -10,12 +10,14 @@ PKG_MD5SUM:=548e6451b398bd95d14f008b4d39ca79
 
 PKG_FIXUP:=autoreconf
 
+TARGET_CFLAGS += -D_GNU_SOURCE
+
 include $(INCLUDE_DIR)/package.mk
 
 define Package/scanbuttond
 	SECTION:=utils
 	CATEGORY:=Utilities
-	DEPENDS:=+libusb
+	DEPENDS:=+libusb-compat
 	TITLE:=Scanner button daemon
 endef
 
