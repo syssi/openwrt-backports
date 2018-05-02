@@ -28,6 +28,7 @@ define Package/libusb
   CATEGORY:=Libraries
   TITLE:=A library for accessing Linux USB devices
   URL:=http://libusb.sourceforge.net/
+  PROVIDES:=libusb-compat
 endef
 
 define Package/libusbpp
