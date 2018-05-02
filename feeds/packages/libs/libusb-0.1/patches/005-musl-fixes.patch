@@ -1,0 +1,20 @@
+--- a/linux.h	2018-05-02 22:20:34.202761447 +0200
++++ b/linux.h	2018-05-02 22:20:43.906748294 +0200
+@@ -4,6 +4,7 @@
+ #include <unistd.h>
+ #include <sys/stat.h>
+ #include <sys/ioctl.h>
++#include <sys/types.h>
+ 
+ struct usb_ctrltransfer {
+ 	/* keep in sync with usbdevice_fs.h:usbdevfs_ctrltransfer */
+--- a/usbpp.h	2018-05-02 22:21:19.610699828 +0200
++++ b/usbpp.h	2018-05-02 22:21:41.954669438 +0200
+@@ -4,6 +4,7 @@
+ 
+ #include <string>
+ #include <list>
++#include <sys/types.h>
+ 
+ #include <usb.h>
+ 
