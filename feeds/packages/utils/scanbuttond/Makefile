@@ -17,7 +17,7 @@ include $(INCLUDE_DIR)/package.mk
 define Package/scanbuttond
 	SECTION:=utils
 	CATEGORY:=Utilities
-	DEPENDS:=+libusb-compat
+	DEPENDS:=+libusb
 	TITLE:=Scanner button daemon
 endef
 
