@@ -32,7 +32,7 @@ define Package/scanbd/Default
   CATEGORY:=Utilities
   TITLE:=Scanner button daemon
   URL:=https://sourceforge.net/projects/scanbd/
-  DEPENDS:=+libusb-1.0 +confuse +libsane +xinetd +libdbus
+  DEPENDS:=+libusb-1.0 +confuse +libsane +xinetd
   PROVIDES:=scanbd
 endef
 
@@ -40,12 +40,6 @@ define Package/scanbd-sane
   $(call Package/scanbd/Default)
   TITLE+= (sane backend)
   VARIANT=sane
-endef
-
-define Package/scanbd-scanbuttond
-  $(call Package/scanbd/Default)
-  TITLE+= (scanbuttond backend)
-  VARIANT=scanbuttond
 endef
 
 define Package/scanbd/Default/description
@@ -70,17 +64,6 @@ define Package/scanbd-sane/description
  This package is built with SANE support.
 endef
 
-define Package/scanbd-scanbuttond/description
- $(call Package/scanbd/Default/description)
- .
- This package is built with scanbuttond support.
-endef
-
-ifeq ($(BUILD_VARIANT),scanbuttond)
-CONFIGURE_ARGS += \
-	--enable-scanbuttond
-endif
-
 define Package/scanbd/install/Default
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/scanbd/scanbd $(1)/usr/sbin/
@@ -99,12 +82,4 @@ define Package/scanbd-sane/install
 	$(call Package/scanbd/install/Default,$(1))
 endef
 
-define Package/scanbd-scanbuttond/install
-	$(call Package/scanbd/install/Default,$(1))
-
-	$(INSTALL_DIR) $(1)/usr/lib/scanbd/scanbuttond/backends
-	$(CP) $(PKG_BUILD_DIR)/src/scanbuttond/backends/.libs/*.so $(1)/usr/lib/scanbd/scanbuttond/backends/
-endef
-
 $(eval $(call BuildPackage,scanbd-sane))
-$(eval $(call BuildPackage,scanbd-scanbuttond))
