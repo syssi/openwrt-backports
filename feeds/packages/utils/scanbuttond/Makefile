@@ -1,13 +1,18 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=scanbuttond
-PKG_VERSION:=0.2.3
-PKG_RELEASE:=cvs20090713-9-debian
+PKG_UPSTREAM_VERSION:=0.2.3
+# Debian patch level: 0.2.3.cvs20090713-9
+PKG_VERSION:=$(PKG_UPSTREAM_VERSION)_cvs20090713
+# r10: + patch 020 (rename internal libusb_* → libusbi_, symbol clash with libusb-1.0)
+PKG_RELEASE:=10
 
-PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_UPSTREAM_VERSION).tar.gz
 PKG_SOURCE_URL:=@SF/scanbuttond
-PKG_MD5SUM:=548e6451b398bd95d14f008b4d39ca79
+PKG_HASH:=93b060a363fef069548a49cb151da53ac6071dc0569f9a07d68751a28dffebee
+PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_UPSTREAM_VERSION)
 
+PKG_LICENSE:=GPL-2.0-or-later
 PKG_FIXUP:=autoreconf
 
 TARGET_CFLAGS += -D_GNU_SOURCE
@@ -17,13 +22,18 @@ include $(INCLUDE_DIR)/package.mk
 define Package/scanbuttond
 	SECTION:=utils
 	CATEGORY:=Utilities
-	DEPENDS:=+libusb-1.0
+	DEPENDS:=+libusb-compat
 	TITLE:=Scanner button daemon
+	URL:=https://scanbuttond.sourceforge.net/
 endef
 
 define Package/scanbuttond/description
 It allows you to invoke actions such as shell scripts whenever one of
 the scanner front panel buttons is pressed.
+endef
+
+define Package/scanbuttond/conffiles
+/etc/scanbuttond/meta.conf
 endef
 
 define Package/scanbuttond/install
@@ -43,4 +53,3 @@ define Package/scanbuttond/install
 endef
 
 $(eval $(call BuildPackage,scanbuttond))
-

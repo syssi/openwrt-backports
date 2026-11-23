@@ -1,0 +1,10 @@
+--- a/backends/epson.c
++++ b/backends/epson.c
+@@ -25,6 +25,7 @@
+ #include <unistd.h>
+ #include <errno.h>
+ #include <syslog.h>
++#include <sys/param.h> /* MAX(); implicit declaration is an error with GCC 14 */
+ #include "scanbuttond/scanbuttond.h"
+ #include "scanbuttond/libusbi.h"
+ #include "epson.h"

@@ -1,0 +1,2022 @@
+Rename scanbuttond's internal libusb_* symbols to libusbi_*
+
+scanbuttond's USB interface library (libscanbtnd-interface_usb) exports
+functions named libusb_init, libusb_open, libusb_close, libusb_exit, ...
+On OpenWrt 25.12 the libusb-0.1 API is provided by libusb-compat, which is
+implemented on top of libusb-1.0 and calls libusb-1.0's libusb_init/open/
+close/exit. Both end up in the same dlopen()ed scope, so libusb-compat's
+calls would bind to scanbuttond's functions of the same name.
+
+Purely mechanical rename (s/\blibusb_/libusbi_/) of scanbuttond's own
+identifiers in interface/, backends/ and include/; no functional change.
+Same idea as jdam6431/scanbuttond (2016), but written against the Debian
+0.2.3.cvs20090713-9 tree.
+diff -ruN a/backends/artec_eplus48u.c b/backends/artec_eplus48u.c
+--- a/backends/artec_eplus48u.c	2026-11-22 22:00:29.889547751 +0100
++++ b/backends/artec_eplus48u.c	2026-11-22 22:00:29.889547751 +0100
+@@ -44,13 +44,13 @@
+ };
+ 
+ 
+-static libusb_handle_t* libusb_handle;
++static libusbi_handle_t* libusbi_handle;
+ static scanner_t* artec_scanners = NULL;
+ 
+ 
+ // returns -1 if the scanner is unsupported, or the index of the
+ // corresponding vendor-product pair in the supported_usb_devices array.
+-int artec_match_libusb_scanner(libusb_device_t* device)
++int artec_match_libusb_scanner(libusbi_device_t* device)
+ {
+ 	int index;
+ 	for (index = 0; index < NUM_SUPPORTED_USB_DEVICES; index++) {
+@@ -64,7 +64,7 @@
+ }
+ 
+ 
+-void artec_attach_libusb_scanner(libusb_device_t* device)
++void artec_attach_libusb_scanner(libusbi_device_t* device)
+ {
+ 	const char* descriptor_prefix = "artec_eplus48u:libusb:";
+ 	int index = artec_match_libusb_scanner(device);
+@@ -98,10 +98,10 @@
+ }
+ 
+ 
+-void artec_scan_devices(libusb_device_t* devices)
++void artec_scan_devices(libusbi_device_t* devices)
+ {
+ 	int index;
+-	libusb_device_t* device = devices;
++	libusbi_device_t* device = devices;
+ 	while (device != NULL) {
+ 		index = artec_match_libusb_scanner(device);
+ 		if (index >= 0)
+@@ -113,10 +113,10 @@
+ 
+ int artec_init_libusb(void)
+ {
+-	libusb_device_t* devices;
++	libusbi_device_t* devices;
+ 
+-	libusb_handle = libusb_init();
+-	devices = libusb_get_devices(libusb_handle);
++	libusbi_handle = libusbi_init();
++	devices = libusbi_get_devices(libusbi_handle);
+ 	artec_scan_devices(devices);
+ 	return 0;
+ }
+@@ -126,7 +126,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			return libusb_control_msg((libusb_device_t*)scanner->internal_dev_ptr,
++			return libusbi_control_msg((libusbi_device_t*)scanner->internal_dev_ptr,
+ 									   requesttype, request, value, index, buffer,
+ 									   bytecount);
+ 			break;
+@@ -152,12 +152,12 @@
+ 
+ int scanbtnd_rescan(void)
+ {
+-	libusb_device_t *devices;
++	libusbi_device_t *devices;
+ 
+ 	artec_detach_scanners();
+ 	artec_scanners = NULL;
+-	libusb_rescan(libusb_handle);
+-	devices = libusb_get_devices(libusb_handle);
++	libusbi_rescan(libusbi_handle);
++	devices = libusbi_get_devices(libusbi_handle);
+ 	artec_scan_devices(devices);
+ 	return 0;
+ }
+@@ -178,9 +178,9 @@
+ 		case CONNECTION_LIBUSB:
+ 			// if devices have been added/removed, return -ENODEV to
+ 			// make scanbuttond update its device list
+-			if (libusb_get_changed_device_count() != 0)
++			if (libusbi_get_changed_device_count() != 0)
+ 				return -ENODEV;
+-			result = libusb_open((libusb_device_t*)scanner->internal_dev_ptr);
++			result = libusbi_open((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ 	if (result == 0)
+@@ -196,7 +196,7 @@
+ 		return -EINVAL;
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			result = libusb_close((libusb_device_t*)scanner->internal_dev_ptr);
++			result = libusbi_close((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ 	if (result == 0)
+@@ -258,7 +258,7 @@
+ {
+ 	syslog(LOG_INFO, "artec_eplus48u-backend: exit");
+ 	artec_detach_scanners();
+-	libusb_exit(libusb_handle);
++	libusbi_exit(libusbi_handle);
+ 	return 0;
+ }
+ 
+diff -ruN a/backends/epson.c b/backends/epson.c
+--- a/backends/epson.c	2026-11-22 22:00:29.913547986 +0100
++++ b/backends/epson.c	2026-11-22 22:00:29.917548026 +0100
+@@ -75,13 +75,13 @@
+ };
+ 
+ 
+-static libusb_handle_t* libusb_handle;
++static libusbi_handle_t* libusbi_handle;
+ static scanner_t* epson_scanners = NULL;
+ 
+ 
+ // returns -1 if the scanner is unsupported, or the index of the
+ // corresponding vendor-product pair in the supported_usb_devices array.
+-int epson_match_libusb_scanner(libusb_device_t* device)
++int epson_match_libusb_scanner(libusbi_device_t* device)
+ {
+ 	int index;
+ 	for (index = 0; index < NUM_SUPPORTED_USB_DEVICES; index++) {
+@@ -95,7 +95,7 @@
+ }
+ 
+ 
+-void epson_attach_libusb_scanner(libusb_device_t* device)
++void epson_attach_libusb_scanner(libusbi_device_t* device)
+ {
+ 	const char* descriptor_prefix = "epson:libusb:";
+ 	int index = epson_match_libusb_scanner(device);
+@@ -129,10 +129,10 @@
+ }
+ 
+ 
+-void epson_scan_devices(libusb_device_t* devices)
++void epson_scan_devices(libusbi_device_t* devices)
+ {
+ 	int index;
+-	libusb_device_t* device = devices;
++	libusbi_device_t* device = devices;
+ 	while (device != NULL) {
+ 		index = epson_match_libusb_scanner(device);
+ 		if (index >= 0)
+@@ -144,10 +144,10 @@
+ 
+ int epson_init_libusb(void)
+ {
+-	libusb_device_t* devices;
++	libusbi_device_t* devices;
+ 
+-	libusb_handle = libusb_init();
+-	devices = libusb_get_devices(libusb_handle);
++	libusbi_handle = libusbi_init();
++	devices = libusbi_get_devices(libusbi_handle);
+ 	epson_scan_devices(devices);
+ 	return 0;
+ }
+@@ -170,12 +170,12 @@
+ 
+ int scanbtnd_rescan(void)
+ {
+-	libusb_device_t *devices;
++	libusbi_device_t *devices;
+ 
+ 	epson_detach_scanners();
+ 	epson_scanners = NULL;
+-	libusb_rescan(libusb_handle);
+-	devices = libusb_get_devices(libusb_handle);
++	libusbi_rescan(libusbi_handle);
++	devices = libusbi_get_devices(libusbi_handle);
+ 	epson_scan_devices(devices);
+ 	return 0;
+ }
+@@ -196,9 +196,9 @@
+ 		case CONNECTION_LIBUSB:
+ 			// if devices have been added/removed, return -ENODEV to
+ 			// make scanbuttond update its device list
+-			if (libusb_get_changed_device_count() != 0)
++			if (libusbi_get_changed_device_count() != 0)
+ 				return -ENODEV;
+-			result = libusb_open((libusb_device_t*)scanner->internal_dev_ptr);
++			result = libusbi_open((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ 	if (result == 0)
+@@ -214,7 +214,7 @@
+ 		return -EINVAL;
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			result = libusb_close((libusb_device_t*)scanner->internal_dev_ptr);
++			result = libusbi_close((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ 	if (result == 0)
+@@ -227,7 +227,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			return libusb_read((libusb_device_t*)scanner->internal_dev_ptr, 
++			return libusbi_read((libusbi_device_t*)scanner->internal_dev_ptr, 
+ 				buffer, bytecount);
+ 			break;
+ 	}
+@@ -239,7 +239,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			return libusb_write((libusb_device_t*)scanner->internal_dev_ptr, 
++			return libusbi_write((libusbi_device_t*)scanner->internal_dev_ptr, 
+ 				buffer, bytecount);
+ 			break;
+ 	}
+@@ -251,7 +251,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			libusb_flush((libusb_device_t*)scanner->internal_dev_ptr);
++			libusbi_flush((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ }
+@@ -307,7 +307,7 @@
+ {
+ 	syslog(LOG_INFO, "epson-backend: exit");
+ 	epson_detach_scanners();
+-	libusb_exit(libusb_handle);
++	libusbi_exit(libusbi_handle);
+ 	return 0;
+ }
+ 
+diff -ruN a/backends/fujitsu.c b/backends/fujitsu.c
+--- a/backends/fujitsu.c	2026-11-22 22:00:29.921548065 +0100
++++ b/backends/fujitsu.c	2026-11-22 22:00:29.921548065 +0100
+@@ -41,13 +41,13 @@
+ };
+ 
+ 
+-static libusb_handle_t* libusb_handle;
++static libusbi_handle_t* libusbi_handle;
+ static scanner_t* fujitsu_scanners = NULL;
+ 
+ 
+ // returns -1 if the scanner is unsupported, or the index of the
+ // corresponding vendor-product pair in the supported_usb_devices array.
+-int fujitsu_match_libusb_scanner(libusb_device_t* device)
++int fujitsu_match_libusb_scanner(libusbi_device_t* device)
+ {
+ 	int index;
+ 	for (index = 0; index < NUM_SUPPORTED_USB_DEVICES; index++) {
+@@ -61,7 +61,7 @@
+ }
+ 
+ 
+-void fujitsu_attach_libusb_scanner(libusb_device_t* device)
++void fujitsu_attach_libusb_scanner(libusbi_device_t* device)
+ {
+ 	const char* descriptor_prefix = "fujitsu:libusb:";
+ 	int index = fujitsu_match_libusb_scanner(device);
+@@ -95,10 +95,10 @@
+ }
+ 
+ 
+-void fujitsu_scan_devices(libusb_device_t* devices)
++void fujitsu_scan_devices(libusbi_device_t* devices)
+ {
+ 	int index;
+-	libusb_device_t* device = devices;
++	libusbi_device_t* device = devices;
+ 	while (device != NULL) {
+ 		index = fujitsu_match_libusb_scanner(device);
+ 		if (index >= 0)
+@@ -110,10 +110,10 @@
+ 
+ int fujitsu_init_libusb(void)
+ {
+-	libusb_device_t* devices;
++	libusbi_device_t* devices;
+ 
+-	libusb_handle = libusb_init();
+-	devices = libusb_get_devices(libusb_handle);
++	libusbi_handle = libusbi_init();
++	devices = libusbi_get_devices(libusbi_handle);
+ 	fujitsu_scan_devices(devices);
+ 	return 0;
+ }
+@@ -136,12 +136,12 @@
+ 
+ int scanbtnd_rescan(void)
+ {
+-	libusb_device_t* devices;
++	libusbi_device_t* devices;
+ 
+ 	fujitsu_detach_scanners();
+ 	fujitsu_scanners = NULL;
+-	libusb_rescan(libusb_handle);
+-	devices = libusb_get_devices(libusb_handle);
++	libusbi_rescan(libusbi_handle);
++	devices = libusbi_get_devices(libusbi_handle);
+ 	fujitsu_scan_devices(devices);
+ 	return 0;
+ }
+@@ -162,9 +162,9 @@
+ 		case CONNECTION_LIBUSB:
+ 			// if devices have been added/removed, return -ENODEV to
+ 			// make scanbuttond update its device list
+-			if (libusb_get_changed_device_count() != 0)
++			if (libusbi_get_changed_device_count() != 0)
+ 				return -ENODEV;
+-			result = libusb_open((libusb_device_t*)scanner->internal_dev_ptr);
++			result = libusbi_open((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ 	if (result == 0)
+@@ -180,7 +180,7 @@
+ 		return -EINVAL;
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			result = libusb_close((libusb_device_t*)scanner->internal_dev_ptr);
++			result = libusbi_close((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ 	if (result == 0)
+@@ -193,7 +193,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			return libusb_read((libusb_device_t*)scanner->internal_dev_ptr,
++			return libusbi_read((libusbi_device_t*)scanner->internal_dev_ptr,
+ 				buffer, bytecount);
+ 			break;
+ 	}
+@@ -205,7 +205,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			return libusb_write((libusb_device_t*)scanner->internal_dev_ptr,
++			return libusbi_write((libusbi_device_t*)scanner->internal_dev_ptr,
+ 				buffer, bytecount);
+ 			break;
+ 	}
+@@ -216,7 +216,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			libusb_flush((libusb_device_t*)scanner->internal_dev_ptr);
++			libusbi_flush((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ }
+@@ -285,7 +285,7 @@
+ {
+ 	syslog(LOG_INFO, "fujitsu-backend: exit");
+ 	fujitsu_detach_scanners();
+-	libusb_exit(libusb_handle);
++	libusbi_exit(libusbi_handle);
+ 	return 0;
+ }
+ 
+diff -ruN a/backends/genesys.c b/backends/genesys.c
+--- a/backends/genesys.c	2026-11-22 22:00:29.905547909 +0100
++++ b/backends/genesys.c	2026-11-22 22:00:29.905547909 +0100
+@@ -42,7 +42,7 @@
+ 	{ "Canon", "CanoScan LiDE 35" }
+ };
+ 
+-static libusb_handle_t* libusb_handle;
++static libusbi_handle_t* libusbi_handle;
+ static scanner_t* genesys_scanners = NULL;
+ 
+ // Button Map for CanonScan LiDE 60
+@@ -58,7 +58,7 @@
+ 
+ // returns -1 if the scanner is unsupported, or the index of the
+ // corresponding vendor-product pair in the supported_usb_devices array.
+-int genesys_match_libusb_scanner(libusb_device_t* device)
++int genesys_match_libusb_scanner(libusbi_device_t* device)
+ {
+    int index;
+    for (index = 0; index < NUM_SUPPORTED_USB_DEVICES; index++) {
+@@ -72,7 +72,7 @@
+ }
+ 
+ 
+-void genesys_attach_libusb_scanner(libusb_device_t* device)
++void genesys_attach_libusb_scanner(libusbi_device_t* device)
+ {
+    const char* descriptor_prefix = "genesys:libusb:";
+    int index = genesys_match_libusb_scanner(device);
+@@ -106,10 +106,10 @@
+ }
+ 
+ 
+-void genesys_scan_devices(libusb_device_t* devices)
++void genesys_scan_devices(libusbi_device_t* devices)
+ {
+    int index;
+-   libusb_device_t* device = devices;
++   libusbi_device_t* device = devices;
+    while (device != NULL) {
+       index = genesys_match_libusb_scanner(device);
+       if (index >= 0) 
+@@ -121,10 +121,10 @@
+ 
+ int genesys_init_libusb(void)
+ {
+-   libusb_device_t* devices;
++   libusbi_device_t* devices;
+    
+-   libusb_handle = libusb_init();
+-   devices = libusb_get_devices(libusb_handle);
++   libusbi_handle = libusbi_init();
++   devices = libusbi_get_devices(libusbi_handle);
+    genesys_scan_devices(devices);
+    return 0;
+ }
+@@ -147,12 +147,12 @@
+ 
+ int scanbtnd_rescan(void)
+ {
+-   libusb_device_t* devices;
++   libusbi_device_t* devices;
+    
+    genesys_detach_scanners();
+    genesys_scanners = NULL;
+-   libusb_rescan(libusb_handle);
+-   devices = libusb_get_devices(libusb_handle);
++   libusbi_rescan(libusbi_handle);
++   devices = libusbi_get_devices(libusbi_handle);
+    genesys_scan_devices(devices);
+    return 0;
+ }
+@@ -173,9 +173,9 @@
+       case CONNECTION_LIBUSB:
+ 	 // if devices have been added/removed, return -ENODEV to
+ 	 // make scanbuttond update its device list
+-	 if (libusb_get_changed_device_count() != 0)
++	 if (libusbi_get_changed_device_count() != 0)
+ 	    return -ENODEV;
+-	 result = libusb_open((libusb_device_t*)scanner->internal_dev_ptr);
++	 result = libusbi_open((libusbi_device_t*)scanner->internal_dev_ptr);
+ 	 break;
+ 	}
+    if (result == 0)
+@@ -191,7 +191,7 @@
+       return -EINVAL;
+    switch (scanner->connection) {
+       case CONNECTION_LIBUSB:
+-	 result = libusb_close((libusb_device_t*)scanner->internal_dev_ptr);
++	 result = libusbi_close((libusbi_device_t*)scanner->internal_dev_ptr);
+ 	 break;
+    }
+    if (result == 0)
+@@ -218,7 +218,7 @@
+    // 40 0c 83 00 00 00 01 00  -> 0x6d
+    bytes[0] = 0x6d;
+    bytes[1] = 0x00; // not really needed, but just to be sure ;-)
+-   num_bytes = libusb_control_msg((libusb_device_t*)scanner->internal_dev_ptr,
++   num_bytes = libusbi_control_msg((libusbi_device_t*)scanner->internal_dev_ptr,
+ 				  0x40, 0x0c, 0x0083, 0x0000, (void *)bytes, 0x0001);
+    
+    if (num_bytes != 1) {
+@@ -236,7 +236,7 @@
+    // returns 1f xored with the keys pressed
+    // - this mean any key that is pressed gets it bit removed from 0x1f
+    // - if multiple keys are pressed at the same time multiple bits will be removed
+-   num_bytes = libusb_control_msg((libusb_device_t*)scanner->internal_dev_ptr,
++   num_bytes = libusbi_control_msg((libusbi_device_t*)scanner->internal_dev_ptr,
+ 				  0xc0, 0x0c, 0x0084, 0x0000, (void *)bytes, 0x0001);
+    if (num_bytes != 1) {
+       syslog(LOG_WARNING, "genesys-backend: communication error: "
+@@ -259,7 +259,7 @@
+ {
+    syslog(LOG_INFO, "genesys-backend: exit");
+    genesys_detach_scanners();
+-   libusb_exit(libusb_handle);
++   libusbi_exit(libusbi_handle);
+    return 0;
+ }
+ 
+diff -ruN a/backends/gt68xx.c b/backends/gt68xx.c
+--- a/backends/gt68xx.c	2026-11-22 22:00:29.885547712 +0100
++++ b/backends/gt68xx.c	2026-11-22 22:00:29.885547712 +0100
+@@ -43,13 +43,13 @@
+ };
+ 
+ 
+-libusb_handle_t* libusb_handle;
++libusbi_handle_t* libusbi_handle;
+ scanner_t* gt68xx_scanners = NULL;
+ 
+ 
+ // returns -1 if the scanner is unsupported, or the index of the
+ // corresponding vendor-product pair in the supported_usb_devices array.
+-int gt68xx_match_libusb_scanner(libusb_device_t* device)
++int gt68xx_match_libusb_scanner(libusbi_device_t* device)
+ {
+ 	int index;
+ 	for (index = 0; index < NUM_SUPPORTED_USB_DEVICES; index++) {
+@@ -63,7 +63,7 @@
+ }
+ 
+ 
+-void gt68xx_attach_libusb_scanner(libusb_device_t* device)
++void gt68xx_attach_libusb_scanner(libusbi_device_t* device)
+ {
+ 	const char* descriptor_prefix = "gt68xx:libusb:";
+ 	int index = gt68xx_match_libusb_scanner(device);
+@@ -97,10 +97,10 @@
+ }
+ 
+ 
+-void gt68xx_scan_devices(libusb_device_t* devices)
++void gt68xx_scan_devices(libusbi_device_t* devices)
+ {
+ 	int index;
+-	libusb_device_t* device = devices;
++	libusbi_device_t* device = devices;
+ 	while (device != NULL) {
+ 		index = gt68xx_match_libusb_scanner(device);
+ 		if (index >= 0) 
+@@ -112,10 +112,10 @@
+ 
+ int gt68xx_init_libusb(void)
+ {
+-	libusb_device_t* devices;
++	libusbi_device_t* devices;
+ 
+-	libusb_handle = libusb_init();
+-	devices = libusb_get_devices(libusb_handle);
++	libusbi_handle = libusbi_init();
++	devices = libusbi_get_devices(libusbi_handle);
+ 	gt68xx_scan_devices(devices);
+ 	return 0;
+ }
+@@ -138,12 +138,12 @@
+ 
+ int scanbtnd_rescan(void)
+ {
+-	libusb_device_t* devices;
++	libusbi_device_t* devices;
+ 
+ 	gt68xx_detach_scanners();
+ 	gt68xx_scanners = NULL;
+-	libusb_rescan(libusb_handle);
+-	devices = libusb_get_devices(libusb_handle);
++	libusbi_rescan(libusbi_handle);
++	devices = libusbi_get_devices(libusbi_handle);
+ 	gt68xx_scan_devices(devices);
+ 	return 0;
+ }
+@@ -164,9 +164,9 @@
+ 		case CONNECTION_LIBUSB:
+ 			// if devices have been added/removed, return -ENODEV to
+ 			// make scanbuttond update its device list
+-			if (libusb_get_changed_device_count() != 0)
++			if (libusbi_get_changed_device_count() != 0)
+ 				return -ENODEV;
+-			result = libusb_open((libusb_device_t*)scanner->internal_dev_ptr);
++			result = libusbi_open((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ 	if (result == 0)
+@@ -182,7 +182,7 @@
+ 		return -EINVAL;
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			result = libusb_close((libusb_device_t*)scanner->internal_dev_ptr);
++			result = libusbi_close((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ 	if (result == 0)
+@@ -195,7 +195,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			return libusb_control_msg((libusb_device_t*)scanner->internal_dev_ptr,
++			return libusbi_control_msg((libusbi_device_t*)scanner->internal_dev_ptr,
+ 				0xc0, 0x04, 0x2011, 0x3f00, buffer, bytecount);
+ 			break;
+ 	}
+@@ -207,7 +207,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			return libusb_control_msg((libusb_device_t*)scanner->internal_dev_ptr,
++			return libusbi_control_msg((libusbi_device_t*)scanner->internal_dev_ptr,
+ 			    0x40, 0x04, 0x2010, 0x3f40, buffer, bytecount);
+ 			break;
+ 	}
+@@ -218,7 +218,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			libusb_flush((libusb_device_t*)scanner->internal_dev_ptr);
++			libusbi_flush((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ }
+@@ -271,7 +271,7 @@
+ {
+ 	syslog(LOG_INFO, "gt68xx-backend: exit");
+ 	gt68xx_detach_scanners();
+-	libusb_exit(libusb_handle);
++	libusbi_exit(libusbi_handle);
+ 	return 0;
+ }
+ 
+diff -ruN a/backends/hp3500.c b/backends/hp3500.c
+--- a/backends/hp3500.c	2026-11-22 22:00:29.909547947 +0100
++++ b/backends/hp3500.c	2026-11-22 22:00:29.909547947 +0100
+@@ -53,13 +53,13 @@
+ */
+ 
+ 
+-libusb_handle_t* libusb_handle;
++libusbi_handle_t* libusbi_handle;
+ scanner_t* hp3500_scanners = NULL;
+ 
+ 
+ // returns -1 if the scanner is unsupported, or the index of the
+ // corresponding vendor-product pair in the supported_usb_devices array.
+-int hp3500_match_libusb_scanner(libusb_device_t* device)
++int hp3500_match_libusb_scanner(libusbi_device_t* device)
+ {
+ 	int index;
+ 	for (index = 0; index < NUM_SUPPORTED_USB_DEVICES; index++) {
+@@ -73,7 +73,7 @@
+ }
+ 
+ 
+-void hp3500_attach_libusb_scanner(libusb_device_t* device)
++void hp3500_attach_libusb_scanner(libusbi_device_t* device)
+ {
+ 	const char* descriptor_prefix = "hp3500:libusb:";
+ 	int index = hp3500_match_libusb_scanner(device);
+@@ -107,10 +107,10 @@
+ }
+ 
+ 
+-void hp3500_scan_devices(libusb_device_t* devices)
++void hp3500_scan_devices(libusbi_device_t* devices)
+ {
+ 	int index;
+-	libusb_device_t* device = devices;
++	libusbi_device_t* device = devices;
+ 	while (device != NULL) {
+ 		index = hp3500_match_libusb_scanner(device);
+ 		if (index >= 0) 
+@@ -122,10 +122,10 @@
+ 
+ int hp3500_init_libusb(void)
+ {
+-	libusb_device_t* devices;
++	libusbi_device_t* devices;
+ 
+-	libusb_handle = libusb_init();
+-	devices = libusb_get_devices(libusb_handle);
++	libusbi_handle = libusbi_init();
++	devices = libusbi_get_devices(libusbi_handle);
+ 	hp3500_scan_devices(devices);
+ 	return 0;
+ }
+@@ -148,12 +148,12 @@
+ 
+ int scanbtnd_rescan(void)
+ {
+-	libusb_device_t* devices;
++	libusbi_device_t* devices;
+ 
+ 	hp3500_detach_scanners();
+ 	hp3500_scanners = NULL;
+-	libusb_rescan(libusb_handle);
+-	devices = libusb_get_devices(libusb_handle);
++	libusbi_rescan(libusbi_handle);
++	devices = libusbi_get_devices(libusbi_handle);
+ 	hp3500_scan_devices(devices);
+ 	return 0;
+ }
+@@ -174,9 +174,9 @@
+ 		case CONNECTION_LIBUSB:
+ 			// if devices have been added/removed, return -ENODEV to
+ 			// make scanbuttond update its device list
+-			if (libusb_get_changed_device_count() != 0)
++			if (libusbi_get_changed_device_count() != 0)
+ 				return -ENODEV;
+-			result = libusb_open((libusb_device_t*)scanner->internal_dev_ptr);
++			result = libusbi_open((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ 	if (result == 0)
+@@ -192,7 +192,7 @@
+ 		return -EINVAL;
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			result = libusb_close((libusb_device_t*)scanner->internal_dev_ptr);
++			result = libusbi_close((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ 	if (result == 0)
+@@ -204,7 +204,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			return libusb_read((libusb_device_t*)scanner->internal_dev_ptr, 
++			return libusbi_read((libusbi_device_t*)scanner->internal_dev_ptr, 
+ 				buffer, bytecount);
+ 			break;
+ 	}
+@@ -216,7 +216,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			return libusb_write((libusb_device_t*)scanner->internal_dev_ptr, 
++			return libusbi_write((libusbi_device_t*)scanner->internal_dev_ptr, 
+ 				buffer, bytecount);
+ 			break;
+ 	}
+@@ -228,7 +228,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			libusb_flush((libusb_device_t*)scanner->internal_dev_ptr);
++			libusbi_flush((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ }
+@@ -308,7 +308,7 @@
+ {
+ 	syslog(LOG_INFO, "hp3500-backend: exit");
+ 	hp3500_detach_scanners();
+-	libusb_exit(libusb_handle);
++	libusbi_exit(libusbi_handle);
+ 	return 0;
+ }
+ 
+diff -ruN a/backends/hp3900.c b/backends/hp3900.c
+--- a/backends/hp3900.c	2026-11-22 22:00:29.865547515 +0100
++++ b/backends/hp3900.c	2026-11-22 22:00:29.865547515 +0100
+@@ -56,13 +56,13 @@
+ };
+ 
+ 
+-libusb_handle_t* libusb_handle;
++libusbi_handle_t* libusbi_handle;
+ scanner_t* hp3900_scanners = NULL;
+ 
+ 
+ // returns -1 if the scanner is unsupported, or the index of the
+ // corresponding vendor-product pair in the supported_usb_devices array.
+-int hp3900_match_libusb_scanner(libusb_device_t* device)
++int hp3900_match_libusb_scanner(libusbi_device_t* device)
+ {
+ 	int index;
+ 	for (index = 0; index < NUM_SUPPORTED_USB_DEVICES; index++) {
+@@ -76,7 +76,7 @@
+ }
+ 
+ 
+-void hp3900_attach_libusb_scanner(libusb_device_t* device)
++void hp3900_attach_libusb_scanner(libusbi_device_t* device)
+ {
+ 	const char* descriptor_prefix = "hp3900:libusb:";
+ 	int index = hp3900_match_libusb_scanner(device);
+@@ -110,10 +110,10 @@
+ }
+ 
+ 
+-void hp3900_scan_devices(libusb_device_t* devices)
++void hp3900_scan_devices(libusbi_device_t* devices)
+ {
+ 	int index;
+-	libusb_device_t* device = devices;
++	libusbi_device_t* device = devices;
+ 	while (device != NULL) {
+ 		index = hp3900_match_libusb_scanner(device);
+ 		if (index >= 0) 
+@@ -125,10 +125,10 @@
+ 
+ int hp3900_init_libusb(void)
+ {
+-	libusb_device_t* devices;
++	libusbi_device_t* devices;
+ 
+-	libusb_handle = libusb_init();
+-	devices = libusb_get_devices(libusb_handle);
++	libusbi_handle = libusbi_init();
++	devices = libusbi_get_devices(libusbi_handle);
+ 	hp3900_scan_devices(devices);
+ 	return 0;
+ }
+@@ -151,12 +151,12 @@
+ 
+ int scanbtnd_rescan(void)
+ {
+-	libusb_device_t* devices;
++	libusbi_device_t* devices;
+ 
+ 	hp3900_detach_scanners();
+ 	hp3900_scanners = NULL;
+-	libusb_rescan(libusb_handle);
+-	devices = libusb_get_devices(libusb_handle);
++	libusbi_rescan(libusbi_handle);
++	devices = libusbi_get_devices(libusbi_handle);
+ 	hp3900_scan_devices(devices);
+ 	return 0;
+ }
+@@ -177,9 +177,9 @@
+ 		case CONNECTION_LIBUSB:
+ 			// if devices have been added/removed, return -ENODEV to
+ 			// make scanbuttond update its device list
+-			if (libusb_get_changed_device_count() != 0)
++			if (libusbi_get_changed_device_count() != 0)
+ 				return -ENODEV;
+-			result = libusb_open((libusb_device_t*)scanner->internal_dev_ptr);
++			result = libusbi_open((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ 	if (result == 0)
+@@ -195,7 +195,7 @@
+ 		return -EINVAL;
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			result = libusb_close((libusb_device_t*)scanner->internal_dev_ptr);
++			result = libusbi_close((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ 	if (result == 0)
+@@ -208,7 +208,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			return libusb_control_msg((libusb_device_t*)scanner->internal_dev_ptr,
++			return libusbi_control_msg((libusbi_device_t*)scanner->internal_dev_ptr,
+ 	                        0xc0, 0x04, 0xe968, 0x0100, (void *)buffer, 0x0002);
+ 			break;
+ 	}
+@@ -220,7 +220,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			libusb_flush((libusb_device_t*)scanner->internal_dev_ptr);
++			libusbi_flush((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ }
+@@ -276,7 +276,7 @@
+ {
+ 	syslog(LOG_INFO, "hp3900-backend: exit");
+ 	hp3900_detach_scanners();
+-	libusb_exit(libusb_handle);
++	libusbi_exit(libusbi_handle);
+ 	return 0;
+ }
+ 
+diff -ruN a/backends/hp5590.c b/backends/hp5590.c
+--- a/backends/hp5590.c	2026-11-22 22:00:29.873547594 +0100
++++ b/backends/hp5590.c	2026-11-22 22:00:29.877547633 +0100
+@@ -49,14 +49,14 @@
+        { "Hewlett-Packard", "Scanjet 7650" },
+ };
+ 
+-static libusb_handle_t* libusb_handle;
++static libusbi_handle_t* libusbi_handle;
+ static scanner_t* hp5590_scanners = NULL;
+ 
+ /* returns -1 if the scanner is unsupported, or the index of the
+  * corresponding vendor-product pair in the supported_usb_devices array.
+  */
+ static int
+-hp5590_match_libusb_scanner(libusb_device_t* device)
++hp5590_match_libusb_scanner(libusbi_device_t* device)
+ {
+        int index;
+ 
+@@ -74,7 +74,7 @@
+ }
+ 
+ static void
+-hp5590_attach_libusb_scanner (libusb_device_t* device)
++hp5590_attach_libusb_scanner (libusbi_device_t* device)
+ {
+        const char* descriptor_prefix = "hp5590:libusb:";
+        int             index;
+@@ -114,10 +114,10 @@
+ }
+ 
+ static void
+-hp5590_scan_devices (libusb_device_t* devices)
++hp5590_scan_devices (libusbi_device_t* devices)
+ {
+        int index;
+-       libusb_device_t* device = devices;
++       libusbi_device_t* device = devices;
+        while (device != NULL)
+        {
+                index = hp5590_match_libusb_scanner (device);
+@@ -130,10 +130,10 @@
+ static int
+ hp5590_init_libusb (void)
+ {
+-       libusb_device_t* devices;
++       libusbi_device_t* devices;
+ 
+-       libusb_handle = libusb_init ();
+-       devices = libusb_get_devices (libusb_handle);
++       libusbi_handle = libusbi_init ();
++       devices = libusbi_get_devices (libusbi_handle);
+        hp5590_scan_devices (devices);
+        return 0;
+ }
+@@ -144,7 +144,7 @@
+        switch (scanner->connection)
+        {
+                case CONNECTION_LIBUSB:
+-                       libusb_flush ((libusb_device_t*) scanner->internal_dev_ptr);
++                       libusbi_flush ((libusbi_device_t*) scanner->internal_dev_ptr);
+                        break;
+        }
+ }
+@@ -167,12 +167,12 @@
+ int
+ scanbtnd_rescan (void)
+ {
+-       libusb_device_t* devices;
++       libusbi_device_t* devices;
+ 
+        hp5590_detach_scanners ();
+        hp5590_scanners = NULL;
+-       libusb_rescan (libusb_handle);
+-       devices = libusb_get_devices (libusb_handle);
++       libusbi_rescan (libusbi_handle);
++       devices = libusbi_get_devices (libusbi_handle);
+        hp5590_scan_devices (devices);
+ 
+        return 0;
+@@ -198,9 +198,9 @@
+                        /* if devices have been added/removed, return -ENODEV to
+                         * make scanbuttond update its device list
+                         */
+-                       if (libusb_get_changed_device_count () != 0)
++                       if (libusbi_get_changed_device_count () != 0)
+                                return -ENODEV;
+-                       result = libusb_open ((libusb_device_t*) scanner->internal_dev_ptr);
++                       result = libusbi_open ((libusbi_device_t*) scanner->internal_dev_ptr);
+                        break;
+        }
+ 
+@@ -221,7 +221,7 @@
+        switch (scanner->connection)
+        {
+                case CONNECTION_LIBUSB:
+-                       result = libusb_close ((libusb_device_t*) scanner->internal_dev_ptr);
++                       result = libusbi_close ((libusbi_device_t*) scanner->internal_dev_ptr);
+                        break;
+        }
+ 
+@@ -282,7 +282,7 @@
+        int                     ret;
+ 
+        /* Check if USB-in-USB operation was accepted */
+-       ret = libusb_control_msg ((libusb_device_t *) scanner->internal_dev_ptr,
++       ret = libusbi_control_msg ((libusbi_device_t *) scanner->internal_dev_ptr,
+                                                          USB_DIR_IN | USB_TYPE_VENDOR,
+                                                          0x0c, 0x8e, 0x20,
+                                                          &status, sizeof (status));
+@@ -327,7 +327,7 @@
+                ctrl.wLength = size;
+ 
+                /* Send USB-in-USB control message */
+-               ret = libusb_control_msg ((libusb_device_t *) scanner->internal_dev_ptr,
++               ret = libusbi_control_msg ((libusbi_device_t *) scanner->internal_dev_ptr,
+                                                                  USB_DIR_OUT | USB_TYPE_VENDOR,
+                                                                  0x04, 0x8f, 0x00,
+                                                                  (unsigned char *) &ctrl, sizeof (ctrl));
+@@ -352,7 +352,7 @@
+                                next_packet_size = len;
+ 
+                        /* Read USB-in-USB data */
+-                       ret = libusb_control_msg ((libusb_device_t *) scanner->internal_dev_ptr,
++                       ret = libusbi_control_msg ((libusbi_device_t *) scanner->internal_dev_ptr,
+                                                                          USB_DIR_IN | USB_TYPE_VENDOR,
+                                                                          core_flags & CORE_DATA ? 0x0c : 0x04,
+                                                                          0x90, 0x00,
+@@ -369,7 +369,7 @@
+ 
+                /* Confirm data reception */
+                ack = 0;
+-               ret = libusb_control_msg ((libusb_device_t *) scanner->internal_dev_ptr,
++               ret = libusbi_control_msg ((libusbi_device_t *) scanner->internal_dev_ptr,
+                                                                  USB_DIR_OUT | USB_TYPE_VENDOR,
+                                                                  0x0c, 0x8f, 0x00,
+                                                                  &ack, sizeof (ack));
+@@ -396,7 +396,7 @@
+                ctrl.wLength = size;
+ 
+                /* Send USB-in-USB control message */
+-               ret = libusb_control_msg ((libusb_device_t *) scanner->internal_dev_ptr,
++               ret = libusbi_control_msg ((libusbi_device_t *) scanner->internal_dev_ptr,
+                                                                  USB_DIR_OUT | USB_TYPE_VENDOR,
+                                                                  0x04, 0x8f, 0x00,
+                                                                  (unsigned char *) &ctrl, sizeof (ctrl));
+@@ -421,7 +421,7 @@
+                                next_packet_size = len;
+ 
+                        /* Send USB-in-USB data */
+-                       ret = libusb_control_msg ((libusb_device_t *) scanner->internal_dev_ptr,
++                       ret = libusbi_control_msg ((libusbi_device_t *) scanner->internal_dev_ptr,
+                                                                          USB_DIR_OUT | USB_TYPE_VENDOR,
+                                                                          core_flags & CORE_DATA ? 0x04 : 0x0c,
+                                                                          0x8f, 0x00, ptr, next_packet_size);
+@@ -452,7 +452,7 @@
+                }
+ 
+                /* Getting  response after data transmission */
+-               ret = libusb_control_msg ((libusb_device_t *) scanner->internal_dev_ptr,
++               ret = libusbi_control_msg ((libusbi_device_t *) scanner->internal_dev_ptr,
+                                                                  USB_DIR_IN | USB_TYPE_VENDOR,
+                                                                  0x0c, 0x90, 0x00,
+                                                                  &response, sizeof (response));
+@@ -581,6 +581,6 @@
+ {
+        syslog (LOG_INFO, "hp5590-backend: exit");
+        hp5590_detach_scanners ();
+-       libusb_exit (libusb_handle);
++       libusbi_exit (libusbi_handle);
+        return 0;
+ }
+\ Kein Zeilenumbruch am Dateiende.
+diff -ruN a/backends/meta.c b/backends/meta.c
+--- a/backends/meta.c	2026-11-22 22:00:29.853547397 +0100
++++ b/backends/meta.c	2026-11-22 22:00:29.857547436 +0100
+@@ -34,7 +34,7 @@
+ static char* backend_name = "Dynamic Module Loader";
+ static char* config_file = STRINGIFY(CFG_DIR) "/meta.conf";
+ 
+-static libusb_handle_t* libusb_handle;
++static libusbi_handle_t* libusbi_handle;
+ static scanner_t* meta_scanners = NULL;
+ static backend_t* meta_backends = NULL;
+ 
+@@ -167,8 +167,8 @@
+ 		syslog(LOG_ERR, "meta-backend: could not init module loader!");
+ 		return error;
+ 	}
+-	libusb_handle = libusb_init();
+-	if (!libusb_handle) {
++	libusbi_handle = libusbi_init();
++	if (!libusbi_handle) {
+ 		syslog(LOG_ERR, "meta-backend: could not init libusb!");
+ 		scanbtnd_loader_exit();
+ 		return 1;
+@@ -238,7 +238,7 @@
+ {
+ 	// if devices have been added/removed, return -ENODEV to
+ 	// make scanbuttond update its device list
+-	if (libusb_get_changed_device_count() != 0) {
++	if (libusbi_get_changed_device_count() != 0) {
+ 		return -ENODEV;
+ 	}
+ 	backend_t* backend = meta_lookup_backend(scanner);
+@@ -276,7 +276,7 @@
+ 	syslog(LOG_INFO, "meta-backend: exit");
+ 	meta_detach_scanners();
+ 	meta_detach_backends();
+-	libusb_exit(libusb_handle);
++	libusbi_exit(libusbi_handle);
+ 	scanbtnd_loader_exit();
+ 	return 0;
+ }
+diff -ruN a/backends/mustek.c b/backends/mustek.c
+--- a/backends/mustek.c	2026-11-22 22:00:29.881547672 +0100
++++ b/backends/mustek.c	2026-11-22 22:00:29.881547672 +0100
+@@ -41,13 +41,13 @@
+ };
+ 
+ 
+-static libusb_handle_t* libusb_handle;
++static libusbi_handle_t* libusbi_handle;
+ static scanner_t* mustek_scanners = NULL;
+ 
+ 
+ // returns -1 if the scanner is unsupported, or the index of the
+ // corresponding vendor-product pair in the supported_usb_devices array.
+-int mustek_match_libusb_scanner(libusb_device_t* device)
++int mustek_match_libusb_scanner(libusbi_device_t* device)
+ {
+ 	int index;
+ 	for (index = 0; index < NUM_SUPPORTED_USB_DEVICES; index++) {
+@@ -61,7 +61,7 @@
+ }
+ 
+ 
+-void mustek_attach_libusb_scanner(libusb_device_t* device)
++void mustek_attach_libusb_scanner(libusbi_device_t* device)
+ {
+ 	const char* descriptor_prefix = "mustek:libusb:";
+ 	int index = mustek_match_libusb_scanner(device);
+@@ -95,10 +95,10 @@
+ }
+ 
+ 
+-void mustek_scan_devices(libusb_device_t* devices)
++void mustek_scan_devices(libusbi_device_t* devices)
+ {
+ 	int index;
+-	libusb_device_t* device = devices;
++	libusbi_device_t* device = devices;
+ 	while (device != NULL) {
+ 		index = mustek_match_libusb_scanner(device);
+ 		if (index >= 0)
+@@ -110,10 +110,10 @@
+ 
+ int mustek_init_libusb(void)
+ {
+-	libusb_device_t* devices;
++	libusbi_device_t* devices;
+ 
+-	libusb_handle = libusb_init();
+-	devices = libusb_get_devices(libusb_handle);
++	libusbi_handle = libusbi_init();
++	devices = libusbi_get_devices(libusbi_handle);
+ 	mustek_scan_devices(devices);
+ 	return 0;
+ }
+@@ -136,12 +136,12 @@
+ 
+ int scanbtnd_rescan(void)
+ {
+-	libusb_device_t *devices;
++	libusbi_device_t *devices;
+ 
+ 	mustek_detach_scanners();
+ 	mustek_scanners = NULL;
+-	libusb_rescan(libusb_handle);
+-	devices = libusb_get_devices(libusb_handle);
++	libusbi_rescan(libusbi_handle);
++	devices = libusbi_get_devices(libusbi_handle);
+ 	mustek_scan_devices(devices);
+ 	return 0;
+ }
+@@ -162,9 +162,9 @@
+ 		case CONNECTION_LIBUSB:
+ 			// if devices have been added/removed, return -ENODEV to
+ 			// make scanbuttond update its device list
+-			if (libusb_get_changed_device_count() != 0)
++			if (libusbi_get_changed_device_count() != 0)
+ 				return -ENODEV;
+-			result = libusb_open((libusb_device_t*)scanner->internal_dev_ptr);
++			result = libusbi_open((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ 	if (result == 0)
+@@ -180,7 +180,7 @@
+ 		return -EINVAL;
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			result = libusb_close((libusb_device_t*)scanner->internal_dev_ptr);
++			result = libusbi_close((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ 	if (result == 0)
+@@ -193,7 +193,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			return libusb_read((libusb_device_t*)scanner->internal_dev_ptr, 
++			return libusbi_read((libusbi_device_t*)scanner->internal_dev_ptr, 
+ 				buffer, bytecount);
+ 			break;
+ 	}
+@@ -205,7 +205,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			return libusb_write((libusb_device_t*)scanner->internal_dev_ptr, 
++			return libusbi_write((libusbi_device_t*)scanner->internal_dev_ptr, 
+ 				buffer, bytecount);
+ 			break;
+ 	}
+@@ -217,7 +217,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			libusb_flush((libusb_device_t*)scanner->internal_dev_ptr);
++			libusbi_flush((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ }                    
+@@ -273,7 +273,7 @@
+ {
+ 	syslog(LOG_INFO, "mustek-backend: exit");
+ 	mustek_detach_scanners();
+-	libusb_exit(libusb_handle);
++	libusbi_exit(libusbi_handle);
+ 	return 0;
+ }
+ 
+diff -ruN a/backends/niash.c b/backends/niash.c
+--- a/backends/niash.c	2026-11-22 22:00:29.869547554 +0100
++++ b/backends/niash.c	2026-11-22 22:00:29.869547554 +0100
+@@ -50,13 +50,13 @@
+ };
+ 
+ 
+-static libusb_handle_t* libusb_handle;
++static libusbi_handle_t* libusbi_handle;
+ static scanner_t* niash_scanners = NULL;
+ 
+ 
+ // returns -1 if the scanner is unsupported, or the index of the
+ // corresponding vendor-product pair in the supported_usb_devices array.
+-int niash_match_libusb_scanner(libusb_device_t* device)
++int niash_match_libusb_scanner(libusbi_device_t* device)
+ {
+ 	int index;
+ 	for (index = 0; index < NUM_SUPPORTED_USB_DEVICES; index++) {
+@@ -71,7 +71,7 @@
+ 
+ 
+ // TODO: check if the descriptor matches the SANE device name!
+-void niash_attach_libusb_scanner(libusb_device_t* device)
++void niash_attach_libusb_scanner(libusbi_device_t* device)
+ {
+ 	const char* descriptor_prefix = "niash:libusb:";
+ 	int index = niash_match_libusb_scanner(device);
+@@ -105,10 +105,10 @@
+ }
+ 
+ 
+-void niash_scan_devices(libusb_device_t* devices)
++void niash_scan_devices(libusbi_device_t* devices)
+ {
+ 	int index;
+-	libusb_device_t* device = devices;
++	libusbi_device_t* device = devices;
+ 	while (device != NULL) {
+ 		index = niash_match_libusb_scanner(device);
+ 		if (index >= 0) 
+@@ -120,10 +120,10 @@
+ 
+ int niash_init_libusb(void)
+ {
+-	libusb_device_t* devices;
++	libusbi_device_t* devices;
+ 
+-	libusb_handle = libusb_init();
+-	devices = libusb_get_devices(libusb_handle);
++	libusbi_handle = libusbi_init();
++	devices = libusbi_get_devices(libusbi_handle);
+ 	niash_scan_devices(devices);
+ 	return 0;
+ }
+@@ -146,12 +146,12 @@
+ 
+ int scanbtnd_rescan(void)
+ {
+-	libusb_device_t* devices;
++	libusbi_device_t* devices;
+ 
+ 	niash_detach_scanners();
+ 	niash_scanners = NULL;
+-	libusb_rescan(libusb_handle);
+-	devices = libusb_get_devices(libusb_handle);
++	libusbi_rescan(libusbi_handle);
++	devices = libusbi_get_devices(libusbi_handle);
+ 	niash_scan_devices(devices);
+ 	return 0;
+ }
+@@ -172,9 +172,9 @@
+ 		case CONNECTION_LIBUSB:
+ 			// if devices have been added/removed, return -ENODEV to
+ 			// make scanbuttond update its device list
+-			if (libusb_get_changed_device_count() != 0)
++			if (libusbi_get_changed_device_count() != 0)
+ 				return -ENODEV;
+-			result = libusb_open((libusb_device_t*)scanner->internal_dev_ptr);
++			result = libusbi_open((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ 	if (result == 0)
+@@ -190,7 +190,7 @@
+ 		return -EINVAL;
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			result = libusb_close((libusb_device_t*)scanner->internal_dev_ptr);
++			result = libusbi_close((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ 	if (result == 0)
+@@ -204,7 +204,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			return libusb_control_msg((libusb_device_t*)scanner->internal_dev_ptr,
++			return libusbi_control_msg((libusbi_device_t*)scanner->internal_dev_ptr,
+ 									   requesttype, request, value, index, buffer,
+ 									   bytecount);
+ 			break;
+@@ -275,7 +275,7 @@
+ {
+ 	syslog(LOG_INFO, "niash-backend: exit");
+ 	niash_detach_scanners();
+-	libusb_exit(libusb_handle);
++	libusbi_exit(libusbi_handle);
+ 	return 0;
+ }
+ 
+diff -ruN a/backends/plustek.c b/backends/plustek.c
+--- a/backends/plustek.c	2026-11-22 22:00:29.925548104 +0100
++++ b/backends/plustek.c	2026-11-22 22:00:29.925548104 +0100
+@@ -59,13 +59,13 @@
+ };
+ 
+ 
+-static libusb_handle_t* libusb_handle;
++static libusbi_handle_t* libusbi_handle;
+ static scanner_t* plustek_scanners = NULL;
+ 
+ 
+ // returns -1 if the scanner is unsupported, or the index of the
+ // corresponding vendor-product pair in the supported_usb_devices array.
+-int plustek_match_libusb_scanner(libusb_device_t* device)
++int plustek_match_libusb_scanner(libusbi_device_t* device)
+ {
+ 	int index;
+ 	for (index = 0; index < NUM_SUPPORTED_USB_DEVICES; index++) {
+@@ -79,7 +79,7 @@
+ }
+ 
+ 
+-void plustek_attach_libusb_scanner(libusb_device_t* device)
++void plustek_attach_libusb_scanner(libusbi_device_t* device)
+ {
+ 	const char* descriptor_prefix = "plustek:libusb:";
+ 	int index = plustek_match_libusb_scanner(device);
+@@ -113,10 +113,10 @@
+ }
+ 
+ 
+-void plustek_scan_devices(libusb_device_t* devices)
++void plustek_scan_devices(libusbi_device_t* devices)
+ {
+ 	int index;
+-	libusb_device_t* device = devices;
++	libusbi_device_t* device = devices;
+ 	while (device != NULL) {
+ 		index = plustek_match_libusb_scanner(device);
+ 		if (index >= 0) 
+@@ -128,10 +128,10 @@
+ 
+ int plustek_init_libusb(void)
+ {
+-	libusb_device_t* devices;
++	libusbi_device_t* devices;
+ 
+-	libusb_handle = libusb_init();
+-	devices = libusb_get_devices(libusb_handle);
++	libusbi_handle = libusbi_init();
++	devices = libusbi_get_devices(libusbi_handle);
+ 	plustek_scan_devices(devices);
+ 	return 0;
+ }
+@@ -154,12 +154,12 @@
+ 
+ int scanbtnd_rescan(void)
+ {
+-	libusb_device_t* devices;
++	libusbi_device_t* devices;
+ 
+ 	plustek_detach_scanners();
+ 	plustek_scanners = NULL;
+-	libusb_rescan(libusb_handle);
+-	devices = libusb_get_devices(libusb_handle);
++	libusbi_rescan(libusbi_handle);
++	devices = libusbi_get_devices(libusbi_handle);
+ 	plustek_scan_devices(devices);
+ 	return 0;
+ }
+@@ -180,9 +180,9 @@
+ 		case CONNECTION_LIBUSB:
+ 			// if devices have been added/removed, return -ENODEV to
+ 			// make scanbuttond update its device list
+-			if (libusb_get_changed_device_count() != 0)
++			if (libusbi_get_changed_device_count() != 0)
+ 				return -ENODEV;
+-			result = libusb_open((libusb_device_t*)scanner->internal_dev_ptr);
++			result = libusbi_open((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ 	if (result == 0)
+@@ -198,7 +198,7 @@
+ 		return -EINVAL;
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			result = libusb_close((libusb_device_t*)scanner->internal_dev_ptr);
++			result = libusbi_close((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ 	if (result == 0)
+@@ -211,7 +211,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			return libusb_read((libusb_device_t*)scanner->internal_dev_ptr,
++			return libusbi_read((libusbi_device_t*)scanner->internal_dev_ptr,
+ 				buffer, bytecount);
+ 			break;
+ 	}
+@@ -223,7 +223,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			return libusb_write((libusb_device_t*)scanner->internal_dev_ptr,
++			return libusbi_write((libusbi_device_t*)scanner->internal_dev_ptr,
+ 				buffer, bytecount);
+ 			break;
+ 	}
+@@ -234,7 +234,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			libusb_flush((libusb_device_t*)scanner->internal_dev_ptr);
++			libusbi_flush((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ }
+@@ -338,7 +338,7 @@
+ {
+ 	syslog(LOG_INFO, "plustek-backend: exit");
+ 	plustek_detach_scanners();
+-	libusb_exit(libusb_handle);
++	libusbi_exit(libusbi_handle);
+ 	return 0;
+ }
+ 
+diff -ruN a/backends/plustek_umax.c b/backends/plustek_umax.c
+--- a/backends/plustek_umax.c	2026-11-22 22:00:29.901547870 +0100
++++ b/backends/plustek_umax.c	2026-11-22 22:00:29.901547870 +0100
+@@ -41,13 +41,13 @@
+ };
+ 
+ 
+-static libusb_handle_t* libusb_handle;
++static libusbi_handle_t* libusbi_handle;
+ static scanner_t* plustek_scanners = NULL;
+ 
+ 
+ // returns -1 if the scanner is unsupported, or the index of the
+ // corresponding vendor-product pair in the supported_usb_devices array.
+-int plustek_match_libusb_scanner(libusb_device_t* device)
++int plustek_match_libusb_scanner(libusbi_device_t* device)
+ {
+ 	int index;
+ 	for (index = 0; index < NUM_SUPPORTED_USB_DEVICES; index++) {
+@@ -61,7 +61,7 @@
+ }
+ 
+ 
+-void plustek_attach_libusb_scanner(libusb_device_t* device)
++void plustek_attach_libusb_scanner(libusbi_device_t* device)
+ {
+ 	const char* descriptor_prefix = "plustek:libusb:";
+ 	int index = plustek_match_libusb_scanner(device);
+@@ -95,10 +95,10 @@
+ }
+ 
+ 
+-void plustek_scan_devices(libusb_device_t* devices)
++void plustek_scan_devices(libusbi_device_t* devices)
+ {
+ 	int index;
+-	libusb_device_t* device = devices;
++	libusbi_device_t* device = devices;
+ 	while (device != NULL) {
+ 		index = plustek_match_libusb_scanner(device);
+ 		if (index >= 0) 
+@@ -110,10 +110,10 @@
+ 
+ int plustek_init_libusb(void)
+ {
+-	libusb_device_t* devices;
++	libusbi_device_t* devices;
+ 
+-	libusb_handle = libusb_init();
+-	devices = libusb_get_devices(libusb_handle);
++	libusbi_handle = libusbi_init();
++	devices = libusbi_get_devices(libusbi_handle);
+ 	plustek_scan_devices(devices);
+ 	return 0;
+ }
+@@ -136,12 +136,12 @@
+ 
+ int scanbtnd_rescan(void)
+ {
+-	libusb_device_t* devices;
++	libusbi_device_t* devices;
+ 
+ 	plustek_detach_scanners();
+ 	plustek_scanners = NULL;
+-	libusb_rescan(libusb_handle);
+-	devices = libusb_get_devices(libusb_handle);
++	libusbi_rescan(libusbi_handle);
++	devices = libusbi_get_devices(libusbi_handle);
+ 	plustek_scan_devices(devices);
+ 	return 0;
+ }
+@@ -162,9 +162,9 @@
+ 		case CONNECTION_LIBUSB:
+ 			// if devices have been added/removed, return -ENODEV to
+ 			// make scanbuttond update its device list
+-			if (libusb_get_changed_device_count() != 0)
++			if (libusbi_get_changed_device_count() != 0)
+ 				return -ENODEV;
+-			result = libusb_open((libusb_device_t*)scanner->internal_dev_ptr);
++			result = libusbi_open((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ 	if (result == 0)
+@@ -180,7 +180,7 @@
+ 		return -EINVAL;
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			result = libusb_close((libusb_device_t*)scanner->internal_dev_ptr);
++			result = libusbi_close((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ 	if (result == 0)
+@@ -193,7 +193,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			return libusb_read((libusb_device_t*)scanner->internal_dev_ptr,
++			return libusbi_read((libusbi_device_t*)scanner->internal_dev_ptr,
+ 				buffer, bytecount);
+ 			break;
+ 	}
+@@ -205,7 +205,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			return libusb_write((libusb_device_t*)scanner->internal_dev_ptr,
++			return libusbi_write((libusbi_device_t*)scanner->internal_dev_ptr,
+ 				buffer, bytecount);
+ 			break;
+ 	}
+@@ -216,7 +216,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			libusb_flush((libusb_device_t*)scanner->internal_dev_ptr);
++			libusbi_flush((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ }
+@@ -285,7 +285,7 @@
+ {
+ 	syslog(LOG_INFO, "plustek-umax-backend: exit");
+ 	plustek_detach_scanners();
+-	libusb_exit(libusb_handle);
++	libusbi_exit(libusbi_handle);
+ 	return 0;
+ }
+ 
+diff -ruN a/backends/snapscan.c b/backends/snapscan.c
+--- a/backends/snapscan.c	2026-11-22 22:00:29.861547475 +0100
++++ b/backends/snapscan.c	2026-11-22 22:00:29.861547475 +0100
+@@ -47,13 +47,13 @@
+ };
+ 
+ 
+-static libusb_handle_t* libusb_handle;
++static libusbi_handle_t* libusbi_handle;
+ static scanner_t* snapscan_scanners = NULL;
+ 
+ 
+ // returns -1 if the scanner is unsupported, or the index of the
+ // corresponding vendor-product pair in the supported_usb_devices array.
+-int snapscan_match_libusb_scanner(libusb_device_t* device)
++int snapscan_match_libusb_scanner(libusbi_device_t* device)
+ {
+ 	int index;
+ 	for (index = 0; index < NUM_SUPPORTED_USB_DEVICES; index++) {
+@@ -67,7 +67,7 @@
+ }
+ 
+ 
+-void snapscan_attach_libusb_scanner(libusb_device_t* device)
++void snapscan_attach_libusb_scanner(libusbi_device_t* device)
+ {
+ 	const char* descriptor_prefix = "snapscan:libusb:";
+ 	int index = snapscan_match_libusb_scanner(device);
+@@ -101,10 +101,10 @@
+ }
+ 
+ 
+-void snapscan_scan_devices(libusb_device_t* devices)
++void snapscan_scan_devices(libusbi_device_t* devices)
+ {
+ 	int index;
+-	libusb_device_t* device = devices;
++	libusbi_device_t* device = devices;
+ 	while (device != NULL) {
+ 		index = snapscan_match_libusb_scanner(device);
+ 		if (index >= 0) 
+@@ -116,10 +116,10 @@
+ 
+ int snapscan_init_libusb(void)
+ {
+-	libusb_device_t* devices;
++	libusbi_device_t* devices;
+ 
+-	libusb_handle = libusb_init();
+-	devices = libusb_get_devices(libusb_handle);
++	libusbi_handle = libusbi_init();
++	devices = libusbi_get_devices(libusbi_handle);
+ 	snapscan_scan_devices(devices);
+ 	return 0;
+ }
+@@ -142,12 +142,12 @@
+ 
+ int scanbtnd_rescan(void)
+ {
+-	libusb_device_t* devices;
++	libusbi_device_t* devices;
+ 
+ 	snapscan_detach_scanners();
+ 	snapscan_scanners = NULL;
+-	libusb_rescan(libusb_handle);
+-	devices = libusb_get_devices(libusb_handle);
++	libusbi_rescan(libusbi_handle);
++	devices = libusbi_get_devices(libusbi_handle);
+ 	snapscan_scan_devices(devices);
+ 	return 0;
+ }
+@@ -168,9 +168,9 @@
+ 		case CONNECTION_LIBUSB:
+ 			// if devices have been added/removed, return -ENODEV to
+ 			// make scanbuttond update its device list
+-			if (libusb_get_changed_device_count() != 0)
++			if (libusbi_get_changed_device_count() != 0)
+ 				return -ENODEV;
+-			result = libusb_open((libusb_device_t*)scanner->internal_dev_ptr);
++			result = libusbi_open((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ 	if (result == 0)
+@@ -186,7 +186,7 @@
+ 		return -EINVAL;
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			result = libusb_close((libusb_device_t*)scanner->internal_dev_ptr);
++			result = libusbi_close((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ 	if (result == 0)
+@@ -199,7 +199,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			return libusb_read((libusb_device_t*)scanner->internal_dev_ptr, 
++			return libusbi_read((libusbi_device_t*)scanner->internal_dev_ptr, 
+ 				buffer, bytecount);
+ 			break;
+ 	}
+@@ -211,7 +211,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			return libusb_write((libusb_device_t*)scanner->internal_dev_ptr, 
++			return libusbi_write((libusbi_device_t*)scanner->internal_dev_ptr, 
+ 				buffer, bytecount);
+ 			break;
+ 	}
+@@ -222,7 +222,7 @@
+ {
+ 	switch (scanner->connection) {
+ 		case CONNECTION_LIBUSB:
+-			libusb_flush((libusb_device_t*)scanner->internal_dev_ptr);
++			libusbi_flush((libusbi_device_t*)scanner->internal_dev_ptr);
+ 			break;
+ 	}
+ }
+@@ -306,7 +306,7 @@
+ {
+ 	syslog(LOG_INFO, "snapscan-backend: exit");
+ 	snapscan_detach_scanners();
+-	libusb_exit(libusb_handle);
++	libusbi_exit(libusbi_handle);
+ 	return 0;
+ }
+ 
+diff -ruN a/include/scanbuttond/libusbi.h b/include/scanbuttond/libusbi.h
+--- a/include/scanbuttond/libusbi.h	2026-11-22 22:00:29.893547791 +0100
++++ b/include/scanbuttond/libusbi.h	2026-11-22 22:00:29.897547830 +0100
+@@ -22,54 +22,54 @@
+ #include <usb.h>
+ #include "scanbuttond/scanbuttond.h"
+ 
+-struct libusb_device;
+-typedef struct libusb_device libusb_device_t;
++struct libusbi_device;
++typedef struct libusbi_device libusbi_device_t;
+ 
+-struct libusb_device {
++struct libusbi_device {
+ 	int vendorID;
+ 	int productID;
+ 	char* location; // bus number + ":" + device number
+ 	struct usb_device* device;
+-	struct usb_dev_handle* handle; // automatically set by libusb_open(...)
++	struct usb_dev_handle* handle; // automatically set by libusbi_open(...)
+ 	int interface;
+ 	int out_endpoint;
+ 	int in_endpoint;
+-	libusb_device_t* next;
++	libusbi_device_t* next;
+ };
+ 
+-struct libusb_handle;
+-typedef struct libusb_handle libusb_handle_t;
++struct libusbi_handle;
++typedef struct libusbi_handle libusbi_handle_t;
+ 
+-struct libusb_handle {
+-	libusb_device_t* devices;
++struct libusbi_handle {
++	libusbi_device_t* devices;
+ 	// rescanning info, timestamps???
+ };
+ 
+-libusb_handle_t* libusb_init(void);
++libusbi_handle_t* libusbi_init(void);
+ 
+ // GLOBAL number of changed devices (does not require a handle!)
+-int libusb_get_changed_device_count(void);
++int libusbi_get_changed_device_count(void);
+ 
+-void libusb_rescan(libusb_handle_t* handle);
++void libusbi_rescan(libusbi_handle_t* handle);
+ 
+-libusb_device_t* libusb_get_devices(libusb_handle_t* handle);
++libusbi_device_t* libusbi_get_devices(libusbi_handle_t* handle);
+ 
+ // returns 0 on success, -EBUSY if the scanner is currently in use,
+ // or -ENODEV if the scanner does no longer exist
+-int libusb_open(libusb_device_t* device);
++int libusbi_open(libusbi_device_t* device);
+ 
+-int libusb_close(libusb_device_t* device);
++int libusbi_close(libusbi_device_t* device);
+ 
+-int libusb_read(libusb_device_t* device, void* buffer, int bytecount);
++int libusbi_read(libusbi_device_t* device, void* buffer, int bytecount);
+ 
+-int libusb_write(libusb_device_t* device, void* buffer, int bytecount);
++int libusbi_write(libusbi_device_t* device, void* buffer, int bytecount);
+ 
+ // flush bulk read queue
+-void libusb_flush(libusb_device_t* device);
++void libusbi_flush(libusbi_device_t* device);
+ 
+-int libusb_control_msg(libusb_device_t* device, int requesttype,
++int libusbi_control_msg(libusbi_device_t* device, int requesttype,
+ 					   int request, int value, int index, void* bytes, int size);
+ 
+-void libusb_exit(libusb_handle_t* handle);
++void libusbi_exit(libusbi_handle_t* handle);
+ 
+ #endif
+diff -ruN a/interface/libusbi.c b/interface/libusbi.c
+--- a/interface/libusbi.c	2026-11-22 22:00:29.849547357 +0100
++++ b/interface/libusbi.c	2026-11-22 22:00:29.849547357 +0100
+@@ -30,22 +30,22 @@
+ int invocation_count = 0;
+ 
+ 
+-libusb_handle_t* libusb_init(void)
++libusbi_handle_t* libusbi_init(void)
+ {
+-	libusb_handle_t* handle;
++	libusbi_handle_t* handle;
+ 	invocation_count++;
+ 	if (invocation_count == 1) {
+ 		syslog(LOG_INFO, "libusbi: initializing...");
+ 		usb_init();
+ 	}
+-	handle = (libusb_handle_t*)malloc(sizeof(libusb_handle_t));
++	handle = (libusbi_handle_t*)malloc(sizeof(libusbi_handle_t));
+ 	handle->devices = NULL;
+-	libusb_rescan(handle);
++	libusbi_rescan(handle);
+ 	return handle;
+ }
+ 
+ 
+-static int libusb_search_interface(struct usb_device* device)
++static int libusbi_search_interface(struct usb_device* device)
+ {
+ 	int found = 0;
+ 	int interface;
+@@ -71,7 +71,7 @@
+ }
+ 
+ 
+-static int libusb_search_in_endpoint(struct usb_device* device)
++static int libusbi_search_in_endpoint(struct usb_device* device)
+ {
+ 	int usb_in_ep = 0;
+ 	int usb_out_ep = 0;
+@@ -102,7 +102,7 @@
+ }
+ 
+ 
+-static int libusb_search_out_endpoint(struct usb_device* device)
++static int libusbi_search_out_endpoint(struct usb_device* device)
+ {
+ 	int usb_in_ep = 0;
+ 	int usb_out_ep = 0;
+@@ -133,46 +133,46 @@
+ }
+ 
+ 
+-static void libusb_attach_device(struct usb_device* device, libusb_handle_t* handle)
++static void libusbi_attach_device(struct usb_device* device, libusbi_handle_t* handle)
+ {
+-	libusb_device_t* libusb_device = (libusb_device_t*)malloc(sizeof(libusb_device_t));
+-	libusb_device->vendorID = device->descriptor.idVendor;
+-	libusb_device->productID = device->descriptor.idProduct;
++	libusbi_device_t* libusbi_device = (libusbi_device_t*)malloc(sizeof(libusbi_device_t));
++	libusbi_device->vendorID = device->descriptor.idVendor;
++	libusbi_device->productID = device->descriptor.idProduct;
+ 
+ 	// the location string consists of bus number, followed by a colon (":"), and the device number
+-	libusb_device->location = (char*)malloc(strlen(device->bus->dirname) + strlen(device->filename) + 2);
+-	strcpy(libusb_device->location, device->bus->dirname);
+-	strcat(libusb_device->location, ":");
+-	strcat(libusb_device->location, device->filename);
+-
+-	libusb_device->device = device;
+-	libusb_device->handle = NULL;
+-	libusb_device->interface = libusb_search_interface(device);
+-	if (libusb_device->interface < 0) {
+-		free(libusb_device->location);
+-		free(libusb_device);
++	libusbi_device->location = (char*)malloc(strlen(device->bus->dirname) + strlen(device->filename) + 2);
++	strcpy(libusbi_device->location, device->bus->dirname);
++	strcat(libusbi_device->location, ":");
++	strcat(libusbi_device->location, device->filename);
++
++	libusbi_device->device = device;
++	libusbi_device->handle = NULL;
++	libusbi_device->interface = libusbi_search_interface(device);
++	if (libusbi_device->interface < 0) {
++		free(libusbi_device->location);
++		free(libusbi_device);
+ 		return;
+ 	}
+-	libusb_device->out_endpoint = libusb_search_out_endpoint(device);
+-	if (libusb_device->out_endpoint < 0) {
+-		free(libusb_device->location);
+-		free(libusb_device);
++	libusbi_device->out_endpoint = libusbi_search_out_endpoint(device);
++	if (libusbi_device->out_endpoint < 0) {
++		free(libusbi_device->location);
++		free(libusbi_device);
+ 		return;
+ 	}
+-	libusb_device->in_endpoint = libusb_search_in_endpoint(device);
+-	if (libusb_device->in_endpoint < 0) {
+-		free(libusb_device->location);
+-		free(libusb_device);
++	libusbi_device->in_endpoint = libusbi_search_in_endpoint(device);
++	if (libusbi_device->in_endpoint < 0) {
++		free(libusbi_device->location);
++		free(libusbi_device);
+ 		return;
+ 	}
+-	libusb_device->next = handle->devices;
+-	handle->devices = libusb_device;
++	libusbi_device->next = handle->devices;
++	handle->devices = libusbi_device;
+ }
+ 
+ 
+-static void libusb_detach_devices(libusb_handle_t* handle)
++static void libusbi_detach_devices(libusbi_handle_t* handle)
+ {
+-	libusb_device_t* next;
++	libusbi_device_t* next;
+ 	while (handle->devices != NULL) {
+ 		next = handle->devices->next;
+ 		free(handle->devices->location);
+@@ -182,12 +182,12 @@
+ }
+ 
+ 
+-void libusb_rescan(libusb_handle_t* handle)
++void libusbi_rescan(libusbi_handle_t* handle)
+ {
+ 	struct usb_bus *bus;
+ 	struct usb_device *device;
+ 
+-	libusb_detach_devices(handle);
++	libusbi_detach_devices(handle);
+ 
+ 	usb_find_busses();
+ 	usb_find_devices();
+@@ -197,7 +197,7 @@
+ 	while (bus != NULL) {
+ 		device = bus->devices;
+ 		while (device != NULL) {
+-			libusb_attach_device(device, handle);
++			libusbi_attach_device(device, handle);
+ 			device = device->next;
+ 		}
+ 		bus = bus->next;
+@@ -206,20 +206,20 @@
+ }
+ 
+ 
+-int libusb_get_changed_device_count(void)
++int libusbi_get_changed_device_count(void)
+ {
+ 	usb_find_busses();
+ 	return usb_find_devices();
+ }
+ 
+ 
+-libusb_device_t* libusb_get_devices(libusb_handle_t* handle)
++libusbi_device_t* libusbi_get_devices(libusbi_handle_t* handle)
+ {
+ 	return handle->devices;
+ }
+ 
+ 
+-int libusb_open(libusb_device_t* device)
++int libusbi_open(libusbi_device_t* device)
+ {
+ 	int result;
+ 
+@@ -262,7 +262,7 @@
+ }
+ 
+ 
+-int libusb_close(libusb_device_t* device)
++int libusbi_close(libusbi_device_t* device)
+ {
+ 	int result;
+ 	result = usb_release_interface(device->handle, device->interface);
+@@ -281,7 +281,7 @@
+ }
+ 
+ 
+-int libusb_read(libusb_device_t* device, void* buffer, int bytecount)
++int libusbi_read(libusbi_device_t* device, void* buffer, int bytecount)
+ {
+ 	int num_bytes = usb_bulk_read(device->handle, device->in_endpoint,
+ 								  buffer, bytecount, TIMEOUT);
+@@ -293,7 +293,7 @@
+ }
+ 
+ 
+-int libusb_write(libusb_device_t* device, void* buffer, int bytecount)
++int libusbi_write(libusbi_device_t* device, void* buffer, int bytecount)
+ {
+ 	int num_bytes = usb_bulk_write(device->handle, device->out_endpoint,
+ 								   buffer, bytecount, TIMEOUT);
+@@ -305,14 +305,14 @@
+ }
+ 
+ 
+-void libusb_flush(libusb_device_t* device)
++void libusbi_flush(libusbi_device_t* device)
+ {
+ 	char buffer[16];
+ 	while (usb_bulk_read(device->handle, device->in_endpoint, buffer, 16, 500) > 0) {};
+ }
+ 
+ 
+-int libusb_control_msg(libusb_device_t* device, int requesttype, int request,
++int libusbi_control_msg(libusbi_device_t* device, int requesttype, int request,
+ 					   int value, int index, void* bytes, int size)
+ {
+ 	int num_bytes = usb_control_msg(device->handle, requesttype, request, value,
+@@ -326,13 +326,13 @@
+ }
+ 
+ 
+-void libusb_exit(libusb_handle_t* handle)
++void libusbi_exit(libusbi_handle_t* handle)
+ {
+ 	invocation_count--;
+ 	if (invocation_count < 0) {
+-		syslog(LOG_WARNING, "libusbi: libusb_exit called more often than libusb_init!!!");				
++		syslog(LOG_WARNING, "libusbi: libusbi_exit called more often than libusbi_init!!!");				
+ 	}
+-	libusb_detach_devices(handle);
++	libusbi_detach_devices(handle);
+ 	free(handle);
+ 	if (invocation_count == 0) {
+ 		syslog(LOG_INFO, "libusbi: shutting down...");

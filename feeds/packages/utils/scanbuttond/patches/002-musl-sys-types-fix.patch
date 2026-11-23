@@ -1,0 +1,10 @@
+--- scanbuttond-0.2.3/backends/hp5590.c.orig	2018-05-02 19:56:12.843467007 +0200
++++ scanbuttond-0.2.3/backends/hp5590.c	2018-05-02 19:56:27.387438559 +0200
+@@ -20,6 +20,7 @@
+ #include <string.h>
+ #include <syslog.h>
+ #include <errno.h>
++#include <sys/types.h>
+ #include <netinet/in.h> /* For htons() */
+ #include "scanbuttond/scanbuttond.h"
+ #include "scanbuttond/libusbi.h"
